@@ -13,6 +13,10 @@ return static function (Slim\App $app): void {
     $app->get('/', App\Controllers\HomeController::class . ':index');
     $app->get('/tos', App\Controllers\HomeController::class . ':tos');
     $app->get('/staff', App\Controllers\HomeController::class . ':staff');
+    // Error Page
+    $app->get('/404', App\Controllers\HomeController::class . ':notFound');
+    $app->get('/405', App\Controllers\HomeController::class . ':methodNotAllowed');
+    $app->get('/500', App\Controllers\HomeController::class . ':internalServerError');
     // Telegram
     $app->post('/telegram_callback', App\Controllers\HomeController::class . ':telegram');
     // User Center
@@ -57,7 +61,6 @@ return static function (Slim\App $app): void {
         $group->get('/kill', App\Controllers\UserController::class . ':kill');
         $group->post('/kill', App\Controllers\UserController::class . ':handleKill');
         $group->get('/logout', App\Controllers\UserController::class . ':logout');
-        $group->get('/backtoadmin', App\Controllers\UserController::class . ':backtoadmin');
         // MFA
         $group->post('/ga_check', App\Controllers\User\MFAController::class . ':checkGa');
         $group->post('/ga_set', App\Controllers\User\MFAController::class . ':setGa');
@@ -95,6 +98,8 @@ return static function (Slim\App $app): void {
         $group->post('/payment/purchase/{type}', App\Services\Payment::class . ':purchase');
         $group->get('/payment/purchase/{type}', App\Services\Payment::class . ':purchase');
         $group->get('/payment/return/{type}', App\Services\Payment::class . ':returnHTML');
+        // Get Clients
+        $group->get('/clients/{name}', App\Controllers\User\ClientController::class . ':getClients');
     })->add(new Auth());
 
     $app->group('/payment', static function (RouteCollectorProxy $group): void {
@@ -166,7 +171,6 @@ return static function (Slim\App $app): void {
         $group->get('/user', App\Controllers\Admin\UserController::class . ':index');
         $group->get('/user/{id}/edit', App\Controllers\Admin\UserController::class . ':edit');
         $group->put('/user/{id}', App\Controllers\Admin\UserController::class . ':update');
-        $group->post('/user/changetouser', App\Controllers\Admin\UserController::class . ':changetouser');
         $group->post('/user/create', App\Controllers\Admin\UserController::class . ':createNewUser');
         $group->delete('/user/{id}', App\Controllers\Admin\UserController::class . ':delete');
         $group->post('/user/ajax', App\Controllers\Admin\UserController::class . ':ajax');
@@ -204,6 +208,8 @@ return static function (Slim\App $app): void {
         $group->post('/setting/billing', App\Controllers\Admin\Setting\BillingController::class . ':saveBilling');
         $group->get('/setting/captcha', App\Controllers\Admin\Setting\CaptchaController::class . ':captcha');
         $group->post('/setting/captcha', App\Controllers\Admin\Setting\CaptchaController::class . ':saveCaptcha');
+        $group->get('/setting/cron', App\Controllers\Admin\Setting\CronController::class . ':cron');
+        $group->post('/setting/cron', App\Controllers\Admin\Setting\CronController::class . ':saveCron');
         $group->get('/setting/email', App\Controllers\Admin\Setting\EmailController::class . ':email');
         $group->post('/setting/email', App\Controllers\Admin\Setting\EmailController::class . ':saveEmail');
         $group->get('/setting/feature', App\Controllers\Admin\Setting\FeatureController::class . ':feature');
@@ -268,12 +274,6 @@ return static function (Slim\App $app): void {
         // 审计 & 杂七杂八的功能
         $group->get('/func/detect_rules', App\Controllers\WebAPI\FuncController::class . ':getDetectLogs');
         $group->get('/func/ping', App\Controllers\WebAPI\FuncController::class . ':ping');
-        // Dummy API for old version
-        $group->get('/nodes', App\Controllers\WebAPI\NodeController::class . ':getAllInfo');
-        $group->post('/func/block_ip', App\Controllers\WebAPI\FuncController::class . ':addBlockIp');
-        $group->get('/func/block_ip', App\Controllers\WebAPI\FuncController::class . ':getBlockip');
-        $group->get('/func/unblock_ip', App\Controllers\WebAPI\FuncController::class . ':getUnblockip');
-        $group->post('/nodes/{id}/info', App\Controllers\WebAPI\NodeController::class . ':info');
     })->add(new NodeToken());
 
     // 传统订阅（SS/V2Ray/Trojan etc.）

@@ -14,6 +14,8 @@ use App\Models\Setting;
 use App\Models\UserSubscribeLog;
 use App\Services\Config;
 use App\Utils\Tools;
+use GeoIp2\Exception\AddressNotFoundException;
+use MaxMind\Db\Reader\InvalidDatabaseException;
 use Telegram\Bot\Api;
 use Telegram\Bot\Exceptions\TelegramSDKException;
 use Telegram\Bot\Objects\CallbackQuery;
@@ -65,6 +67,11 @@ final class Callback
     private bool $AllowEditMessage;
 
     /**
+     * @param Api $bot
+     * @param CallbackQuery $Callback
+     *
+     * @throws AddressNotFoundException
+     * @throws InvalidDatabaseException
      * @throws TelegramSDKException
      */
     public function __construct(Api $bot, CallbackQuery $Callback)
@@ -274,6 +281,8 @@ final class Callback
     /**
      * 用户相关回调数据处理
      *
+     * @throws AddressNotFoundException
+     * @throws InvalidDatabaseException
      * @throws TelegramSDKException
      */
     public function userCallback(): void
@@ -379,6 +388,8 @@ final class Callback
      * 用户中心
      *
      * @throws TelegramSDKException
+     * @throws AddressNotFoundException
+     * @throws InvalidDatabaseException
      */
     public function userCenter(): void
     {
@@ -692,12 +703,12 @@ final class Callback
                 $OpEnd = end($Operate);
 
                 if ($OpEnd === 'update') {
-                    $this->User->sendDailyMail = ($this->User->sendDailyMail === 0 ? 1 : 0);
+                    $this->User->daily_mail_enable = ($this->User->daily_mail_enable === 0 ? 1 : 0);
 
                     if ($this->User->save()) {
                         $text = '设置更改成功，每日邮件接收当前设置为：';
                         $text .= '<strong>';
-                        $text .= ($this->User->sendDailyMail === 0 ? '不发送' : '发送');
+                        $text .= ($this->User->daily_mail_enable === 0 ? '不发送' : '发送');
                         $text .= '</strong>';
                     } else {
                         $text = '发生错误。';
@@ -705,7 +716,7 @@ final class Callback
                 } else {
                     $text = '每日邮件接收当前设置为：';
                     $text .= '<strong>';
-                    $text .= ($this->User->sendDailyMail === 0 ? '不发送' : '发送');
+                    $text .= ($this->User->daily_mail_enable === 0 ? '不发送' : '发送');
                     $text .= '</strong>';
                 }
 

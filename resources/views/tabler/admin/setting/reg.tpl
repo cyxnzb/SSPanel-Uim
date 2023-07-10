@@ -1,4 +1,4 @@
-{include file='admin/tabler_header.tpl'}
+{include file='admin/header.tpl'}
 
 <div class="page-wrapper">
     <div class="container-xl">
@@ -62,24 +62,6 @@
                                             <option value="0" {if $settings['reg_email_verify'] === false}selected{/if}>关闭</option>
                                             <option value="1" {if $settings['reg_email_verify']}selected{/if}>开启</option>
                                         </select>
-                                    </div>
-                                </div>
-                                <div class="form-group mb-3 row">
-                                    <label class="form-label col-3 col-form-label">邮箱验证码有效期（秒）</label>
-                                    <div class="col">
-                                        <input id="email_verify_ttl" type="text" class="form-control" value="{$settings['email_verify_ttl']}">
-                                    </div>
-                                </div>
-                                <div class="form-group mb-3 row">
-                                    <label class="form-label col-3 col-form-label">验证码有效期内单个 IP 可请求次数</label>
-                                    <div class="col">
-                                        <input id="email_verify_ip_limit" type="text" class="form-control" value="{$settings['email_verify_ip_limit']}">
-                                    </div>
-                                </div>
-                                <div class="form-group mb-3 row">
-                                    <label class="form-label col-3 col-form-label">验证码有效期内单个邮箱地址可请求次数</label>
-                                    <div class="col">
-                                        <input id="email_verify_email_limit" type="text" class="form-control" value="{$settings['email_verify_email_limit']}">
                                     </div>
                                 </div>
                                 <div class="form-group mb-3 row">
@@ -231,4 +213,4 @@
     });
 </script>
 
-{include file='admin/tabler_footer.tpl'}
+{include file='admin/footer.tpl'}

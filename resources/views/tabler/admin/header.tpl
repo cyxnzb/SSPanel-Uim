@@ -29,28 +29,28 @@
 </head>
 
 {if $user->is_dark_mode}
-<body class='theme-dark'>
+<body data-bs-theme="dark">
 {else}
 <body>
 {/if}
     <div class="page">
-        <header class="navbar navbar-expand-md navbar-dark navbar-overlap d-print-none">
+        <header class="navbar navbar-expand-md navbar-overlap d-print-none" data-bs-theme="dark">
             <div class="container-xl" style="background-image: none;">
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar-menu">
                     <span class="navbar-toggler-icon"></span>
                 </button>
-                <h1 class="navbar-brand navbar-brand-autodark d-none-navbar-horizontal pe-0 pe-md-3" style="filter: none;">
-                    <img src="/images/uim-logo-round_48x48.png" height="32" alt="SSPanel-UIM" class="navbar-brand-image">
+                <h1 class="navbar-brand navbar-brand-autodark d-none-navbar-horizontal pe-0 pe-md-3">
+                    <img src="/images/uim-logo-round_48x48.png" height="32" alt="SSPanel-UIM Logo" class="navbar-brand-image" style="filter: none;">
                 </h1>
                 <div class="navbar-nav flex-row order-md-last">
                     <div class="nav-item dropdown">
                         <a href="#" class="nav-link d-flex lh-1 text-reset p-0" data-bs-toggle="dropdown"
                             aria-label="Open user menu">
                             <span class="avatar avatar-sm"
-                                style="background-image: url({$user->gravatar})"></span>
+                                style="background-image: url({$user->dice_bear})"></span>
                             <div class="d-none d-xl-block ps-2">
                                 <div>{$user->email}</div>
-                                <div class="mt-1 small text-muted">{$user->user_name}</div>
+                                <div class="mt-1 small text-secondary">{$user->user_name}</div>
                             </div>
                         </a>
                         <div class="dropdown-menu dropdown-menu-end dropdown-menu-arrow">
@@ -96,31 +96,34 @@
                                                 </a>
                                                 <div class="dropdown-menu">
                                                     <a href="/admin/setting/billing" class="dropdown-item">
-                                                      财务
+                                                        财务
                                                     </a>
                                                     <a href="/admin/setting/email" class="dropdown-item">
-                                                      邮件
+                                                        邮件
                                                     </a>
                                                     <a href="/admin/setting/support" class="dropdown-item">
-                                                      客服
+                                                        客服
                                                     </a>
                                                     <a href="/admin/setting/captcha" class="dropdown-item">
-                                                      验证
+                                                        验证
                                                     </a>
                                                     <a href="/admin/setting/reg" class="dropdown-item">
-                                                      注册
+                                                        注册
                                                     </a>
                                                     <a href="/admin/setting/ref" class="dropdown-item">
-                                                      邀请
+                                                        邀请
                                                     </a>
                                                     <a href="/admin/setting/im" class="dropdown-item">
-                                                      IM
+                                                        IM
                                                     </a>
                                                     <a href="/admin/setting/sub" class="dropdown-item">
-                                                      订阅
+                                                        订阅
+                                                    </a>
+                                                    <a href="/admin/setting/cron" class="dropdown-item">
+                                                        定时任务
                                                     </a>
                                                     <a href="/admin/setting/feature" class="dropdown-item">
-                                                      功能
+                                                        其他设置
                                                     </a>
                                                 </div>
                                             </div>

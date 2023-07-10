@@ -8,10 +8,13 @@ use App\Models\Link;
 use App\Models\Node;
 use App\Models\Setting;
 use App\Models\UserSubscribeLog;
+use App\Services\RateLimit;
 use App\Utils\ResponseHelper;
 use Psr\Http\Message\ResponseInterface;
+use RedisException;
 use Slim\Http\Response;
 use Slim\Http\ServerRequest;
+use voku\helper\AntiXSS;
 use function array_key_exists;
 use function base64_encode;
 use function json_decode;
@@ -22,16 +25,32 @@ use function json_encode;
  */
 final class LinkController extends BaseController
 {
-    public static function getContent(ServerRequest $request, Response $response, array $args): Response|ResponseInterface
-    {
+    /**
+     * @throws RedisException
+     */
+    public static function getContent(
+        ServerRequest $request,
+        Response $response,
+        array $args
+    ): Response|ResponseInterface {
         $err_msg = '订阅链接无效';
 
-        if (! $_ENV['Subscribe'] || ! Setting::obtain('enable_traditional_sub')) {
+        if (! $_ENV['Subscribe'] ||
+            ! Setting::obtain('enable_traditional_sub') ||
+            'https://' . $request->getHeaderLine('Host') !== $_ENV['subUrl']
+        ) {
             return ResponseHelper::error($response, $err_msg);
         }
 
-        $token = $args['token'];
-        $params = $request->getQueryParams();
+        $antiXss = new AntiXSS();
+        $token = $antiXss->xss_clean($args['token']);
+
+        if ($_ENV['enable_rate_limit'] &&
+            (! RateLimit::checkIPLimit($request->getServerParam('REMOTE_ADDR')) ||
+            ! RateLimit::checkSubLimit($token))
+        ) {
+            return ResponseHelper::error($response, $err_msg);
+        }
 
         $link = Link::where('token', $token)->first();
 
@@ -41,6 +60,7 @@ final class LinkController extends BaseController
 
         $user = $link->user();
 
+        $params = $request->getQueryParams();
         $sub_type = '';
         $sub_info = '';
 
@@ -206,8 +226,8 @@ final class LinkController extends BaseController
                 $network = $node_custom_config['network'] ?? '';
                 $header = $node_custom_config['header'] ?? ['type' => 'none'];
                 $header_type = $header['type'] ?? '';
-                $host = $node_custom_config['host'] ?? '';
-                $path = $node_custom_config['path'] ?? '/';
+                $host = $node_custom_config['header']['request']['headers']['Host'][0] ?? $node_custom_config['host'] ?? '';
+                $path = $node_custom_config['header']['request']['path'][0] ?? $node_custom_config['path'] ?? '/';
 
                 $v2rayn_array = [
                     'v' => '2',
@@ -286,6 +306,7 @@ final class LinkController extends BaseController
     {
         $userid = $user->id;
         $token = Link::where('userid', $userid)->first();
+
         return $_ENV['subUrl'] . '/link/' . $token->token;
     }
 }

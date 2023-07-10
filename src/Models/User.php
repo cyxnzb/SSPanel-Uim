@@ -13,10 +13,17 @@ use App\Utils\Tools;
 use Exception;
 use Psr\Http\Client\ClientExceptionInterface;
 use Ramsey\Uuid\Uuid;
+use function array_merge;
+use function date;
 use function in_array;
 use function is_null;
 use function json_encode;
+use function md5;
+use function random_int;
+use function round;
+use function str_replace;
 use function time;
+use const PHP_EOL;
 
 final class User extends Model
 {
@@ -26,8 +33,8 @@ final class User extends Model
      * @var bool
      */
     public bool $isLogin;
-    protected $connection = 'default';
 
+    protected $connection = 'default';
     protected $table = 'user';
 
     /**
@@ -37,19 +44,17 @@ final class User extends Model
      */
     protected $casts = [
         'port' => 'int',
-        'is_admin' => 'boolean',
         'node_speedlimit' => 'float',
-        'sendDailyMail' => 'int',
+        'daily_mail_enable' => 'int',
         'ref_by' => 'int',
     ];
 
     /**
-     * Gravatar 头像地址
+     * DiceBear 头像
      */
-    public function getGravatarAttribute(): string
+    public function getDiceBearAttribute(): string
     {
-        $hash = md5(strtolower(trim($this->email)));
-        return 'https://www.gravatar.com/avatar/' . $hash . '?&d=identicon';
+        return 'https://api.dicebear.com/6.x/identicon/svg?seed=' . md5($this->email);
     }
 
     /**
@@ -79,9 +84,9 @@ final class User extends Model
     /**
      * 最后使用时间
      */
-    public function lastSsTime(): string
+    public function lastUseTime(): string
     {
-        return $this->t === 0 || $this->t === null ? '从未使用喵' : Tools::toDateTime($this->t);
+        return $this->last_use_time === 0 ? '从未使用' : Tools::toDateTime($this->last_use_time);
     }
 
     /**
@@ -145,8 +150,17 @@ final class User extends Model
      */
     public function generateUUID(): bool
     {
-        $this->uuid = Uuid::uuid4();
-        return $this->save();
+        for ($i = 0; $i < 10; $i++) {
+            $uuid = Uuid::uuid4();
+            $is_uuid_used = User::where('uuid', $uuid)->first();
+
+            if ($is_uuid_used === null) {
+                $this->uuid = Uuid::uuid4();
+                return $this->save();
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -154,8 +168,17 @@ final class User extends Model
      */
     public function generateApiToken(): bool
     {
-        $this->api_token = Uuid::uuid4();
-        return $this->save();
+        for ($i = 0; $i < 10; $i++) {
+            $api_token = Uuid::uuid4();
+            $is_api_token_used = User::where('api_token', $api_token)->first();
+
+            if ($is_api_token_used === null) {
+                $this->api_token = Uuid::uuid4();
+                return $this->save();
+            }
+        }
+
+        return false;
     }
 
     /*
@@ -163,7 +186,7 @@ final class User extends Model
      */
     public function enableTraffic(): string
     {
-        return Tools::flowAutoShow($this->transfer_enable);
+        return Tools::autoBytes($this->transfer_enable);
     }
 
     /*
@@ -179,7 +202,7 @@ final class User extends Model
      */
     public function usedTraffic(): string
     {
-        return Tools::flowAutoShow($this->u + $this->d);
+        return Tools::autoBytes($this->u + $this->d);
     }
 
     /*
@@ -187,7 +210,7 @@ final class User extends Model
      */
     public function totalTraffic(): string
     {
-        return Tools::flowAutoShow($this->transfer_total);
+        return Tools::autoBytes($this->transfer_total);
     }
 
     /*
@@ -208,7 +231,7 @@ final class User extends Model
      */
     public function unusedTraffic(): string
     {
-        return Tools::flowAutoShow($this->transfer_enable - ($this->u + $this->d));
+        return Tools::autoBytes($this->transfer_enable - ($this->u + $this->d));
     }
 
     /*
@@ -230,7 +253,7 @@ final class User extends Model
      */
     public function todayUsedTraffic(): string
     {
-        return Tools::flowAutoShow($this->u + $this->d - $this->last_day_t);
+        return Tools::autoBytes($this->transfer_today);
     }
 
     /*
@@ -241,8 +264,7 @@ final class User extends Model
         if ($this->transfer_enable === 0 || $this->transfer_enable === null) {
             return 0;
         }
-        $Todayused = $this->u + $this->d - $this->last_day_t;
-        $percent = $Todayused / $this->transfer_enable;
+        $percent = $this->transfer_today / $this->transfer_enable;
         $percent = round($percent, 4);
         return $percent * 100;
     }
@@ -252,7 +274,7 @@ final class User extends Model
      */
     public function lastUsedTraffic(): string
     {
-        return Tools::flowAutoShow($this->last_day_t);
+        return Tools::autoBytes($this->u + $this->d - $this->transfer_today);
     }
 
     /*
@@ -263,8 +285,7 @@ final class User extends Model
         if ($this->transfer_enable === 0 || $this->transfer_enable === null) {
             return 0;
         }
-        $Lastused = $this->last_day_t;
-        $percent = $Lastused / $this->transfer_enable;
+        $percent = ($this->u + $this->d - $this->transfer_today) / $this->transfer_enable;
         $percent = round($percent, 4);
         return $percent * 100;
     }
@@ -363,13 +384,10 @@ final class User extends Model
 
         DetectBanLog::where('user_id', '=', $uid)->delete();
         DetectLog::where('user_id', '=', $uid)->delete();
-        EmailVerify::where('email', $email)->delete();
         InviteCode::where('user_id', '=', $uid)->delete();
         OnlineLog::where('user_id', '=', $uid)->delete();
         Link::where('userid', '=', $uid)->delete();
         LoginIp::where('userid', '=', $uid)->delete();
-        PasswordReset::where('email', '=', $email)->delete();
-        TelegramSession::where('user_id', '=', $uid)->delete();
         UserSubscribeLog::where('user_id', '=', $uid)->delete();
 
         $this->delete();
@@ -503,8 +521,13 @@ final class User extends Model
     /**
      * 发送邮件
      */
-    public function sendMail(string $subject, string $template, array $array = [], array $files = [], $is_queue = false): bool
-    {
+    public function sendMail(
+        string $subject,
+        string $template,
+        array $array = [],
+        array $files = [],
+        $is_queue = false
+    ): bool {
         if ($is_queue) {
             $emailqueue = new EmailQueue();
             $emailqueue->to_email = $this->email;
@@ -572,7 +595,7 @@ final class User extends Model
         $enable_traffic = $this->enableTraffic();
         $used_traffic = $this->usedTraffic();
         $unused_traffic = $this->unusedTraffic();
-        switch ($this->sendDailyMail) {
+        switch ($this->daily_mail_enable) {
             case 1:
                 echo 'Send daily mail to user: ' . $this->id;
                 $this->sendMail(
@@ -618,6 +641,11 @@ final class User extends Model
         $loginip->userid = $this->id;
         $loginip->datetime = time();
         $loginip->type = $type;
+
+        if ($type === 0) {
+            $this->last_login_time = time();
+            $this->save();
+        }
 
         return $loginip->save();
     }

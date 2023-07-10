@@ -8,15 +8,14 @@ use App\Controllers\AuthController;
 use App\Controllers\BaseController;
 use App\Models\User;
 use App\Models\UserMoneyLog;
-use App\Services\Auth;
-use App\Utils\Cookie;
 use App\Utils\Hash;
 use App\Utils\Tools;
 use Exception;
 use Psr\Http\Message\ResponseInterface;
 use Slim\Http\Response;
 use Slim\Http\ServerRequest;
-use function time;
+use function str_replace;
+use const PHP_EOL;
 
 final class UserController extends BaseController
 {
@@ -31,8 +30,10 @@ final class UserController extends BaseController
             'transfer_enable' => '流量限制',
             'transfer_used' => '当期用量',
             'class' => '等级',
+            'is_admin' => '是否管理员',
+            'is_banned' => '是否封禁',
+            'is_inactive' => '是否闲置',
             'reg_date' => '注册时间',
-            'expire_in' => '账户过期',
             'class_expire' => '等级过期',
         ],
         'create_dialog' => [
@@ -104,6 +105,9 @@ final class UserController extends BaseController
         );
     }
 
+    /**
+     * @throws Exception
+     */
     public function createNewUser(ServerRequest $request, Response $response, array $args): Response|ResponseInterface
     {
         $email = $request->getParam('email');
@@ -111,31 +115,32 @@ final class UserController extends BaseController
         $password = $request->getParam('password');
         $balance = $request->getParam('balance');
 
-        try {
-            if ($email === '') {
-                throw new Exception('请填写邮箱');
-            }
-            if (! Tools::isEmailLegal($email)) {
-                throw new Exception('邮箱格式不正确');
-            }
-            $exist = User::where('email', $email)->first();
-            if ($exist !== null) {
-                throw new Exception('此邮箱已注册');
-            }
-            if ($password === '') {
-                $password = Tools::genRandomChar(16);
-            }
-            AuthController::registerHelper($response, 'user', $email, $password, '', 1, '', 0, $balance, 1);
-            $user = User::where('email', $email)->first();
-            if ($ref_by !== '') {
-                $user->ref_by = (int) $ref_by;
-                $user->save();
-            }
-        } catch (Exception $e) {
+        if ($email === '' || ! Tools::isEmailLegal($email)) {
             return $response->withJson([
                 'ret' => 0,
-                'msg' => $e->getMessage(),
+                'msg' => '邮箱格式错误',
             ]);
+        }
+
+        $exist = User::where('email', $email)->first();
+
+        if ($exist !== null) {
+            return $response->withJson([
+                'ret' => 0,
+                'msg' => '邮箱已存在',
+            ]);
+        }
+
+        if ($password === '') {
+            $password = Tools::genRandomChar(16);
+        }
+
+        AuthController::registerHelper($response, 'user', $email, $password, '', 1, '', 0, $balance, 1);
+        $user = User::where('email', $email)->first();
+
+        if ($ref_by !== '') {
+            $user->ref_by = (int) $ref_by;
+            $user->save();
         }
 
         return $response->withJson([
@@ -235,41 +240,6 @@ final class UserController extends BaseController
         ]);
     }
 
-    public function changetouser(ServerRequest $request, Response $response, array $args): Response|ResponseInterface
-    {
-        $userid = $request->getParam('userid');
-        $adminid = $request->getParam('adminid');
-        $user = User::find($userid);
-        $admin = User::find($adminid);
-        $expire_in = time() + 60 * 60;
-
-        if (! $admin->is_admin || ! $user || ! Auth::getUser()->isLogin) {
-            return $response->withJson([
-                'ret' => 0,
-                'msg' => '非法请求',
-            ]);
-        }
-
-        Cookie::set([
-            'uid' => $user->id,
-            'email' => $user->email,
-            'key' => Hash::cookieHash($user->pass, $expire_in),
-            'ip' => Hash::ipHash($_SERVER['REMOTE_ADDR'], $user->id, $expire_in),
-            'expire_in' => $expire_in,
-            'old_uid' => Cookie::get('uid'),
-            'old_email' => Cookie::get('email'),
-            'old_key' => Cookie::get('key'),
-            'old_ip' => Cookie::get('ip'),
-            'old_expire_in' => Cookie::get('expire_in'),
-            'old_local' => $request->getParam('local'),
-        ], $expire_in);
-
-        return $response->withJson([
-            'ret' => 1,
-            'msg' => '切换成功',
-        ]);
-    }
-
     public function ajax(ServerRequest $request, Response $response, array $args): Response|ResponseInterface
     {
         $users = User::orderBy('id', 'desc')->get();
@@ -280,6 +250,9 @@ final class UserController extends BaseController
             <a class="btn btn-blue" href="/admin/user/' . $user->id . '/edit">编辑</a>';
             $user->transfer_enable = $user->enableTraffic();
             $user->transfer_used = $user->usedTraffic();
+            $user->is_admin = $user->is_admin === 1 ? '是' : '否';
+            $user->is_banned = $user->is_banned === 1 ? '是' : '否';
+            $user->is_inactive = $user->is_inactive === 1 ? '是' : '否';
         }
 
         return $response->withJson([

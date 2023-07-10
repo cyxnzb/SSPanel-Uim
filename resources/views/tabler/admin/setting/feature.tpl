@@ -1,4 +1,4 @@
-{include file='admin/tabler_header.tpl'}
+{include file='admin/header.tpl'}
 
 <div class="page-wrapper">
     <div class="container-xl">
@@ -6,10 +6,10 @@
             <div class="row align-items-center">
                 <div class="col">
                     <h2 class="page-title">
-                        <span class="home-title">功能设置</span>
+                        <span class="home-title">其他设置</span>
                     </h2>
                     <div class="page-pretitle my-3">
-                        <span class="home-subtitle">设置站点的功能开关与显示</span>
+                        <span class="home-subtitle">设置站点的其他设置</span>
                     </div>
                 </div>
                 <div class="col-auto ms-auto d-print-none">
@@ -99,4 +99,4 @@
     });
 </script>
 
-{include file='admin/tabler_footer.tpl'}
+{include file='admin/footer.tpl'}
